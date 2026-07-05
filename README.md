@@ -173,6 +173,14 @@ A: 支持个人用户库和群组库。群组库需要将路径前缀从 `/users
 
 A: 单次创建/更新/删除操作最多 50 个条目。读取操作每页最多 100 条，需要分页获取更多。
 
+### Q: PowerShell 下创建条目报错 "Uploaded data must be a JSON array"？
+
+A: PowerShell 的 `ConvertTo-Json` 会把单元素数组自动展开为单个对象。解决方法是手动构造 JSON 字符串，或使用 PowerShell 7+ 的 `-AsArray` 参数。详见 [SKILL.md 中的 PowerShell 最佳实践](.trae/skills/zotero/SKILL.md#powershell-最佳实践)。
+
+### Q: 单条文献导出为 BibTeX 报 404？
+
+A: 单条目路径 `/items/<key>?format=bibtex` 不支持导出格式，需要使用 `/items?itemKey=<key>&format=bibtex` 方式。详见 [SKILL.md 中的说明](.trae/skills/zotero/SKILL.md#6-单条目导出的正确方式)。
+
 ## License
 
 MIT License
