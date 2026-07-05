@@ -1,6 +1,6 @@
 # 贡献指南
 
-感谢你对 Zotero Skill for TRAE 项目的兴趣！我们欢迎各种形式的贡献。
+感谢你对 Zotero Skill 项目的兴趣！我们欢迎各种形式的贡献。
 
 ## 贡献方式
 
@@ -20,8 +20,7 @@
 ## Skill 结构
 
 ```
-.trae/skills/zotero/
-└── SKILL.md    # Skill 的主要定义和文档
+SKILL.md    # Skill 的主要定义和文档
 ```
 
 SKILL.md 包含 frontmatter 和正文两部分：
@@ -51,4 +50,4 @@ SKILL.md 包含 frontmatter 和正文两部分：
 - 复现步骤
 - 预期行为
 - 实际行为
-- 环境信息（操作系统、TRAE 版本等）
+- 环境信息（操作系统等）
