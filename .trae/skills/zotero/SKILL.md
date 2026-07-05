@@ -510,6 +510,49 @@ $version = $response.Headers['Last-Modified-Version']
 $item = $response.Content | ConvertFrom-Json
 ```
 
+### 5. 构造 JSON 数组（重要！）
+
+PowerShell 的 `ConvertTo-Json` 在处理只有一个元素的数组时会自动展开为单个对象，导致 API 返回 "Uploaded data must be a JSON array" 错误。**创建/更新条目时必须手动构造 JSON 字符串**：
+
+```powershell
+# 错误方式（单元素会被展开）
+$body = @(@{ itemType = "book"; title = "Test" }) | ConvertTo-Json -Depth 10
+
+# 正确方式：手动构造 JSON 字符串
+$body = '[
+  {
+    "itemType": "book",
+    "title": "我的书籍",
+    "creators": [
+      { "creatorType": "author", "firstName": "San", "lastName": "Zhang" }
+    ]
+  }
+]'
+
+# 或者使用 -AsArray 标志（PowerShell 7+）
+$body = (@(@{ itemType = "book"; title = "Test" }) | ConvertTo-Json -Depth 10 -AsArray)
+```
+
+### 6. 单条目导出的正确方式
+
+单条目导出格式（`format=bibtex`、`format=ris` 等）不能直接在 `/items/<itemKey>` 上使用，需要使用多条目接口加 `itemKey` 参数：
+
+```powershell
+# 错误：单条目路径不支持 format 参数
+# GET /users/<userID>/items/<itemKey>?format=bibtex
+
+# 正确：使用多条目接口 + itemKey 参数
+Invoke-RestMethod -Uri "$baseUrl/users/$userId/items?itemKey=<itemKey>&format=bibtex" -Headers $headers
+```
+
+同样，获取单条目的格式化引用和书目也推荐使用此方式：
+
+```powershell
+# 获取 APA 引用
+$result = Invoke-RestMethod -Uri "$baseUrl/users/$userId/items?itemKey=<itemKey>&include=citation&style=apa" -Headers $headers
+$citation = $result[0].citation
+```
+
 ## 常见错误
 
 | 状态码 | 说明 | 处理方式 |
