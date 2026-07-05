@@ -533,7 +533,60 @@ $body = '[
 $body = (@(@{ itemType = "book"; title = "Test" }) | ConvertTo-Json -Depth 10 -AsArray)
 ```
 
-### 6. 单条目导出的正确方式
+### 6. PowerShell 5 中文/UTF-8 编码问题（重要！）
+
+**PowerShell 5（Windows 自带的 powershell.exe）默认使用系统本地编码（如 GBK），而非 UTF-8。** 使用 `ConvertTo-Json` + `Invoke-RestMethod` 发送包含中文/非 ASCII 字符的请求时，中文字符会被损坏（变成 `?`）。
+
+**表现：** 集合名称、标签、摘要等中的中文全部变成问号。
+
+**根本原因：**
+- `ConvertTo-Json` 输出的字符串是系统本地编码（GBK）
+- `Invoke-RestMethod` 发送请求时不声明 `charset=utf-8`
+- Zotero API 收到非 UTF-8 字节后，无法识别的字符被替换为 `?`
+
+**解决方案：使用 .NET HttpWebRequest 手动发送 UTF-8 编码的请求**
+
+```powershell
+# 错误方式：ConvertTo-Json + Invoke-RestMethod 会导致中文乱码
+$body = @{ name = "我的收藏" } | ConvertTo-Json
+Invoke-RestMethod -Uri "$baseUrl/users/$userId/collections" -Method Post -Headers $headers -Body $body
+# 结果：集合名称变成 "????"
+
+# 正确方式：手动构造 JSON 并用 .NET 类发送 UTF-8 请求
+$jsonBody = '{"name": "我的收藏"}'
+$bodyBytes = [System.Text.Encoding]::UTF8.GetBytes($jsonBody)
+
+$request = [System.Net.HttpWebRequest]::Create("$baseUrl/users/$userId/collections")
+$request.Method = "POST"
+$request.Headers.Add("Zotero-API-Version", "3")
+$request.Headers.Add("Zotero-API-Key", $apiKey)
+$request.ContentType = "application/json; charset=utf-8"
+$request.ContentLength = $bodyBytes.Length
+
+$stream = $request.GetRequestStream()
+$stream.Write($bodyBytes, 0, $bodyBytes.Length)
+$stream.Close()
+
+$resp = $request.GetResponse()
+$respStream = $resp.GetResponseStream()
+$reader = New-Object System.IO.StreamReader($respStream, [System.Text.Encoding]::UTF8)
+$result = $reader.ReadToEnd()
+```
+
+**读取响应时也需要注意：** 用 `Invoke-RestMethod` 读取含中文的响应时，PowerShell 控制台显示可能乱码，但实际数据可能是正确的。验证方式：
+
+```powershell
+# 用 WebClient 获取原始字节再用 UTF-8 解码，确保看到真实数据
+$webClient = New-Object System.Net.WebClient
+$webClient.Headers.Add("Zotero-API-Version", "3")
+$webClient.Headers.Add("Zotero-API-Key", $apiKey)
+$responseBytes = $webClient.DownloadData("$baseUrl/users/$userId/items/<itemKey>")
+$responseStr = [System.Text.Encoding]::UTF8.GetString($responseBytes)
+```
+
+> **注意：** PowerShell 7+（`pwsh`）默认使用 UTF-8，不存在此问题。
+
+### 7. 单条目导出的正确方式
 
 单条目导出格式（`format=bibtex`、`format=ris` 等）不能直接在 `/items/<itemKey>` 上使用，需要使用多条目接口加 `itemKey` 参数：
 
